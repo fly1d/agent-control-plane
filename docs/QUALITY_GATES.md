@@ -30,6 +30,13 @@ Smoke tests prove that the packaged service starts conceptually, reports readine
 valid public contract, and rejects invalid input. They do not replace behavior, integration,
 load, recovery, or security tests.
 
+## Dependency maintenance
+
+Dependency pull requests must identify a compatibility, security, or reproducibility benefit.
+Dependabot may raise a declared minimum version when the existing constraint blocks an update;
+it must not create routine pull requests that only replace one compatible lower bound with a
+newer one. Major tool upgrades are reviewed separately from routine maintenance.
+
 ## Branch protection
 
 Configure a GitHub ruleset for `main` with:
