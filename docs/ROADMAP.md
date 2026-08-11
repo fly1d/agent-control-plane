@@ -4,16 +4,17 @@ Roadmap items advance only when tied to a validated user problem and an acceptan
 
 ## Foundation
 
-- Versioned AgentSpec and event contracts.
-- API health, readiness, and failure conventions.
-- Pull request governance and automated quality gates.
+- [x] Versioned AgentSpec and event contracts.
+- [x] API health, readiness, and failure conventions.
+- [x] Pull request governance and automated quality gates.
 
 ## Reliability gateway
 
 - Framework-neutral trace ingestion.
 - Run replay and failure classification.
 - Tool-call schema validation and risk policy.
-- Human approval queue and immutable audit record.
+- [x] In-memory human approval queue and append-only audit contract.
+- PostgreSQL-backed approval and immutable audit persistence.
 - Offline evaluation datasets and version promotion gates.
 
 ## Durable operations
