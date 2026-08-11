@@ -8,7 +8,7 @@ applies to changes merged into `main`, not to every local edit or experimental c
 | Lane | Target time | Required evidence | When it runs |
 | --- | ---: | --- | --- |
 | Local | under 60 seconds | focused tests, formatter | while developing |
-| Pull request | under 5 minutes | lint, types, unit tests, smoke tests, container build | every PR |
+| Pull request | under 5 minutes | lint, types, unit tests, PostgreSQL integration, smoke tests, container build | every PR |
 | Main | under 15 minutes | clean rebuild and complete current suite | every merge |
 | Scheduled | time-boxed | dependency audit and supported Python versions | weekly |
 | Release | risk-based | migration, rollback, security, and scenario tests | before release |
@@ -30,6 +30,9 @@ Smoke tests prove that the packaged service starts conceptually, reports readine
 valid public contract, and rejects invalid input. They do not replace behavior, integration,
 load, recovery, or security tests.
 
+Database changes additionally require upgrade, integration, downgrade, and re-upgrade evidence
+against the supported PostgreSQL version. Migration rehearsal uses disposable data only.
+
 ## Dependency maintenance
 
 Dependency pull requests must identify a compatibility, security, or reproducibility benefit.
@@ -46,6 +49,7 @@ Configure a GitHub ruleset for `main` with:
 - stale approvals dismissed after new code is pushed;
 - conversation resolution required;
 - `fast-gate` and `container-build` required;
+- `postgres-integration` required for database changes;
 - force pushes and deletion blocked;
 - administrators subject to the same rules.
 

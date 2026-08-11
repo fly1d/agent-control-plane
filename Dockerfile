@@ -7,8 +7,9 @@ WORKDIR /app
 
 RUN groupadd --system app && useradd --system --gid app app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
 COPY src ./src
+COPY migrations ./migrations
 RUN python -m pip install --no-cache-dir .
 
 USER app

@@ -1,4 +1,4 @@
-.PHONY: install format lint type unit smoke test audit check run
+.PHONY: install format lint type unit smoke integration test audit check migrate run
 
 install:
 	python -m pip install -e '.[dev]'
@@ -20,6 +20,9 @@ unit:
 smoke:
 	python -m pytest tests/smoke -m smoke
 
+integration:
+	python -m pytest tests/integration -m integration
+
 test:
 	python -m pytest --cov=agent_control_plane --cov-report=term-missing
 
@@ -27,6 +30,9 @@ audit:
 	python -m pip_audit
 
 check: lint type test
+
+migrate:
+	python -m alembic upgrade head
 
 run:
 	python -m agent_control_plane

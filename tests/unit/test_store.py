@@ -76,6 +76,7 @@ def approval_request(agent_id: str = "support-agent") -> ApprovalRequestCreate:
 def test_register_agent_creates_initial_state_and_audit_event() -> None:
     store = build_store()
 
+    assert store.is_ready() is True
     record = store.register_agent(registration())
 
     assert record.status is AgentRuntimeStatus.REGISTERED
@@ -85,6 +86,7 @@ def test_register_agent_creates_initial_state_and_audit_event() -> None:
     event = store.list_audit_events()[0]
     assert event.event_type is AuditEventType.AGENT_REGISTERED
     assert event.actor == "operator@example.test"
+    store.close()
 
 
 def test_duplicate_agent_registration_is_rejected() -> None:

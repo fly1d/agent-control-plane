@@ -54,6 +54,10 @@ class ApprovalAlreadyDecidedError(StoreError):
 
 
 class ControlPlaneStore(Protocol):
+    def is_ready(self) -> bool: ...
+
+    def close(self) -> None: ...
+
     def register_agent(self, request: AgentRegistrationRequest) -> AgentRecord: ...
 
     def get_agent(self, agent_id: str) -> AgentRecord: ...
@@ -83,14 +87,29 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+ALLOWED_STATUS_TRANSITIONS = {
+    AgentRuntimeStatus.REGISTERED: {AgentRuntimeStatus.ACTIVE, AgentRuntimeStatus.PAUSED},
+    AgentRuntimeStatus.ACTIVE: {AgentRuntimeStatus.PAUSED},
+    AgentRuntimeStatus.PAUSED: {AgentRuntimeStatus.ACTIVE},
+}
+
+
+def validate_status_transition(current: AgentRuntimeStatus, requested: AgentRuntimeStatus) -> None:
+    if requested not in ALLOWED_STATUS_TRANSITIONS[current]:
+        raise InvalidStatusTransitionError(
+            f"cannot change agent status from '{current}' to '{requested}'"
+        )
+
+
+def validate_agent_is_active(record: AgentRecord) -> None:
+    if record.status is not AgentRuntimeStatus.ACTIVE:
+        raise AgentNotActiveError(
+            f"agent '{record.spec.agent_id}' must be active to request approval"
+        )
+
+
 class InMemoryControlPlaneStore:
     """Concurrency-safe adapter for development and single-process evaluation."""
-
-    _allowed_status_transitions = {
-        AgentRuntimeStatus.REGISTERED: {AgentRuntimeStatus.ACTIVE, AgentRuntimeStatus.PAUSED},
-        AgentRuntimeStatus.ACTIVE: {AgentRuntimeStatus.PAUSED},
-        AgentRuntimeStatus.PAUSED: {AgentRuntimeStatus.ACTIVE},
-    }
 
     def __init__(
         self,
@@ -104,6 +123,12 @@ class InMemoryControlPlaneStore:
         self._approvals: dict[UUID, ApprovalRecord] = {}
         self._audit_events: list[AuditEvent] = []
         self._lock = RLock()
+
+    def is_ready(self) -> bool:
+        return True
+
+    def close(self) -> None:
+        return None
 
     def register_agent(self, request: AgentRegistrationRequest) -> AgentRecord:
         with self._lock:
@@ -149,10 +174,7 @@ class InMemoryControlPlaneStore:
                     f"expected revision {update.expected_revision}, current revision is "
                     f"{current.revision}"
                 )
-            if update.status not in self._allowed_status_transitions[current.status]:
-                raise InvalidStatusTransitionError(
-                    f"cannot change agent status from '{current.status}' to '{update.status}'"
-                )
+            validate_status_transition(current.status, update.status)
 
             timestamp = self._clock()
             updated = current.model_copy(
@@ -176,10 +198,7 @@ class InMemoryControlPlaneStore:
     def create_approval(self, request: ApprovalRequestCreate) -> ApprovalRecord:
         with self._lock:
             agent = self.get_agent(request.agent_id)
-            if agent.status is not AgentRuntimeStatus.ACTIVE:
-                raise AgentNotActiveError(
-                    f"agent '{request.agent_id}' must be active to request approval"
-                )
+            validate_agent_is_active(agent)
             timestamp = self._clock()
             request_id = self._id_factory()
             record = ApprovalRecord(
