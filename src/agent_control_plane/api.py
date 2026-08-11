@@ -23,6 +23,7 @@ from agent_control_plane.models import (
 )
 from agent_control_plane.store import (
     AgentAlreadyExistsError,
+    AgentNotActiveError,
     AgentNotFoundError,
     ApprovalAlreadyDecidedError,
     ApprovalNotFoundError,
@@ -120,6 +121,8 @@ def create_app(store: ControlPlaneStore | None = None) -> FastAPI:
             return control_plane.create_approval(request)
         except AgentNotFoundError as error:
             _raise_http_error(status.HTTP_404_NOT_FOUND, "agent_not_found", error)
+        except AgentNotActiveError as error:
+            _raise_http_error(status.HTTP_409_CONFLICT, "agent_not_active", error)
 
     @application.get(
         "/v1/approvals/{request_id}", response_model=ApprovalRecord, tags=["approvals"]

@@ -17,6 +17,7 @@ from agent_control_plane.models import (
 )
 from agent_control_plane.store import (
     AgentAlreadyExistsError,
+    AgentNotActiveError,
     AgentNotFoundError,
     ApprovalAlreadyDecidedError,
     ApprovalNotFoundError,
@@ -48,6 +49,18 @@ def registration(agent_id: str = "support-agent") -> AgentRegistrationRequest:
 
 def register(store: InMemoryControlPlaneStore, agent_id: str = "support-agent") -> None:
     store.register_agent(registration(agent_id))
+
+
+def activate(store: InMemoryControlPlaneStore, agent_id: str = "support-agent") -> None:
+    store.update_agent_status(
+        agent_id,
+        AgentStatusUpdate(
+            status=AgentRuntimeStatus.ACTIVE,
+            expected_revision=1,
+            actor="operator@example.test",
+            reason="Readiness checks passed.",
+        ),
+    )
 
 
 def approval_request(agent_id: str = "support-agent") -> ApprovalRequestCreate:
@@ -141,6 +154,7 @@ def test_stale_revision_and_invalid_transition_are_rejected() -> None:
 def test_approval_lifecycle_is_single_decision_and_audited() -> None:
     store = build_store()
     register(store)
+    activate(store)
     pending = store.create_approval(approval_request())
 
     approved = store.decide_approval(
@@ -158,6 +172,7 @@ def test_approval_lifecycle_is_single_decision_and_audited() -> None:
     assert [event.event_type for event in store.list_audit_events()] == [
         AuditEventType.APPROVAL_APPROVED,
         AuditEventType.APPROVAL_REQUESTED,
+        AuditEventType.AGENT_STATUS_CHANGED,
         AuditEventType.AGENT_REGISTERED,
     ]
     with pytest.raises(ApprovalAlreadyDecidedError):
@@ -178,9 +193,18 @@ def test_approval_requires_a_registered_agent() -> None:
         store.create_approval(approval_request("missing-agent"))
 
 
+def test_approval_requires_an_active_agent() -> None:
+    store = build_store()
+    register(store)
+
+    with pytest.raises(AgentNotActiveError):
+        store.create_approval(approval_request())
+
+
 def test_rejected_approval_is_audited_and_unknown_request_is_rejected() -> None:
     store = build_store()
     register(store)
+    activate(store)
     pending = store.create_approval(approval_request())
 
     rejected = store.decide_approval(

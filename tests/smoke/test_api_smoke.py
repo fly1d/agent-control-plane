@@ -164,6 +164,19 @@ async def test_governance_conflicts_fail_closed(client: httpx.AsyncClient) -> No
     assert stale.status_code == 409
     assert stale.json()["detail"]["code"] == "revision_conflict"
 
+    inactive_approval = await client.post(
+        "/v1/approvals",
+        json={
+            "agent_id": "support-agent",
+            "action": "ticket.refund",
+            "risk": "high",
+            "actor": "support-agent",
+            "reason": "The agent has not been activated.",
+        },
+    )
+    assert inactive_approval.status_code == 409
+    assert inactive_approval.json()["detail"]["code"] == "agent_not_active"
+
     missing_status = await client.patch(
         "/v1/agents/missing-agent/status",
         json={

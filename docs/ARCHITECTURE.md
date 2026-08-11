@@ -28,10 +28,10 @@ the development adapter without leaking database types into the public API. Post
 the source of truth when persistence is introduced. Vector databases remain derived indexes,
 not authoritative stores.
 
-State changes use an expected revision to reject stale writers. Approval requests are
-single-decision records: an approved or rejected request cannot be overwritten. Audit events
-are append-only within the store and returned newest first. Authentication and durable audit
-retention are required before production use.
+State changes use an expected revision to reject stale writers. Only active agents can request
+approval. Approval requests are single-decision records: an approved or rejected request cannot
+be overwritten. Audit events are append-only within the store and returned newest first.
+Authentication and durable audit retention are required before production use.
 
 ## Adapter policy
 

@@ -33,6 +33,10 @@ class AgentNotFoundError(StoreError):
     pass
 
 
+class AgentNotActiveError(StoreError):
+    pass
+
+
 class RevisionConflictError(StoreError):
     pass
 
@@ -171,7 +175,11 @@ class InMemoryControlPlaneStore:
 
     def create_approval(self, request: ApprovalRequestCreate) -> ApprovalRecord:
         with self._lock:
-            self.get_agent(request.agent_id)
+            agent = self.get_agent(request.agent_id)
+            if agent.status is not AgentRuntimeStatus.ACTIVE:
+                raise AgentNotActiveError(
+                    f"agent '{request.agent_id}' must be active to request approval"
+                )
             timestamp = self._clock()
             request_id = self._id_factory()
             record = ApprovalRecord(

@@ -91,6 +91,17 @@ jobs:
               {"spec": specification, "actor": "ci@example.test"},
           )
           assert registered["revision"] == 1
+          activated = call(
+              "/v1/agents/ci-smoke-agent/status",
+              "PATCH",
+              {
+                  "status": "active",
+                  "expected_revision": 1,
+                  "actor": "ci@example.test",
+                  "reason": "Container readiness checks passed.",
+              },
+          )
+          assert activated["status"] == "active"
 
           approval = call(
               "/v1/approvals",
@@ -113,5 +124,5 @@ jobs:
               },
           )
           assert decided["status"] == "approved"
-          assert call("/v1/audit-events")["count"] == 3
+          assert call("/v1/audit-events")["count"] == 4
           PY
