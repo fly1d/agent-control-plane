@@ -42,6 +42,10 @@ The API is then available at `http://127.0.0.1:8000`. Important endpoints:
 - `GET /health/live`
 - `GET /health/ready`
 - `POST /v1/agent-specs/validate`
+- `POST /v1/agents` and `PATCH /v1/agents/{agent_id}/status`
+- `GET` and `POST /v1/approvals`
+- `POST /v1/approvals/{request_id}/decision`
+- `GET /v1/audit-events`
 - `GET /docs`
 
 Container execution:
@@ -59,8 +63,13 @@ long-running checks run after merge and on a schedule. See
 
 ## Project status
 
-The repository is in foundation stage. Public API compatibility starts with the `v1` schema;
-runtime, storage, and workflow adapters are not yet production-ready.
+The first governance loop is available: register an agent, activate or pause it with optimistic
+revision checks, request and decide human approval, and inspect the resulting audit events.
+Public API compatibility starts with the `v1` schema.
+
+The bundled store is intentionally in-memory and intended for development and evaluation. Data
+does not survive a process restart and must not be treated as a production system of record.
+PostgreSQL persistence, authenticated actor identity, and durable workflows remain planned.
 
 ## License
 

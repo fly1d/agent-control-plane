@@ -67,20 +67,51 @@ jobs:
                       raise
                   time.sleep(0.5)
 
-          request = urllib.request.Request(
-              "http://127.0.0.1:8000/v1/agent-specs/validate",
-              data=json.dumps(
-                  {
-                      "agent_id": "ci-smoke-agent",
-                      "version": "1.0.0",
-                      "display_name": "CI Smoke Agent",
-                      "description": "Validates the packaged service contract.",
-                      "entrypoint": "https://agents.example.test/ci-smoke",
-                  }
-              ).encode(),
-              headers={"Content-Type": "application/json"},
-              method="POST",
+          def call(path, method="GET", payload=None):
+              request = urllib.request.Request(
+                  f"http://127.0.0.1:8000{path}",
+                  data=None if payload is None else json.dumps(payload).encode(),
+                  headers={"Content-Type": "application/json"},
+                  method=method,
+              )
+              with urllib.request.urlopen(request, timeout=2) as response:
+                  return json.load(response)
+
+          specification = {
+              "agent_id": "ci-smoke-agent",
+              "version": "1.0.0",
+              "display_name": "CI Smoke Agent",
+              "description": "Validates the packaged service contract.",
+              "entrypoint": "https://agents.example.test/ci-smoke",
+          }
+          assert call("/v1/agent-specs/validate", "POST", specification)["valid"] is True
+          registered = call(
+              "/v1/agents",
+              "POST",
+              {"spec": specification, "actor": "ci@example.test"},
           )
-          with urllib.request.urlopen(request, timeout=2) as response:
-              assert json.load(response)["valid"] is True
+          assert registered["revision"] == 1
+
+          approval = call(
+              "/v1/approvals",
+              "POST",
+              {
+                  "agent_id": "ci-smoke-agent",
+                  "action": "deployment.promote",
+                  "risk": "high",
+                  "actor": "ci-smoke-agent",
+                  "reason": "Exercise the packaged governance loop.",
+              },
+          )
+          decided = call(
+              f"/v1/approvals/{approval['request_id']}/decision",
+              "POST",
+              {
+                  "decision": "approve",
+                  "actor": "ci-reviewer@example.test",
+                  "reason": "Container smoke evidence passed.",
+              },
+          )
+          assert decided["status"] == "approved"
+          assert call("/v1/audit-events")["count"] == 3
           PY

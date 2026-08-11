@@ -15,15 +15,23 @@ Existing Agent
     v
 Control Plane API
     |- AgentSpec validation
+    |- agent lifecycle and optimistic revision checks
+    |- human approval queue and append-only audit events
     |- trace and replay       (planned)
-    |- policy and approval    (planned)
     |- evaluation gates       (planned)
     `- version promotion      (planned)
 ```
 
-The current code implements the API shell and the first versioned contract. PostgreSQL becomes
+The current code implements the API shell, the first versioned contract, and an in-memory
+governance loop. The storage protocol is owned by the control plane so PostgreSQL can replace
+the development adapter without leaking database types into the public API. PostgreSQL becomes
 the source of truth when persistence is introduced. Vector databases remain derived indexes,
 not authoritative stores.
+
+State changes use an expected revision to reject stale writers. Approval requests are
+single-decision records: an approved or rejected request cannot be overwritten. Audit events
+are append-only within the store and returned newest first. Authentication and durable audit
+retention are required before production use.
 
 ## Adapter policy
 
