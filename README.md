@@ -37,8 +37,8 @@ make check
 make run
 ```
 
-Without `ACP_DATABASE_URL`, the service uses its process-local in-memory adapter. The API is
-then available at `http://127.0.0.1:8000`. Important endpoints:
+`make run` explicitly enables an unauthenticated, process-local in-memory adapter for
+development. The API is then available at `http://127.0.0.1:8000`. Important endpoints:
 
 - `GET /health/live`
 - `GET /health/ready`
@@ -55,14 +55,33 @@ Persistent local execution starts PostgreSQL, runs migrations, and then starts t
 docker compose up --build
 ```
 
-For an externally managed PostgreSQL database, set a `postgresql+psycopg://` URL and migrate
-before starting the service:
+The Compose profile is protected by the development-only bearer token
+`local-dev-control-plane-token`. Send it as `Authorization: Bearer <token>` when calling a
+`/v1` endpoint. Health endpoints remain public.
+
+For an externally managed PostgreSQL database, configure principals, set a
+`postgresql+psycopg://` URL, and migrate before starting the service:
 
 ```bash
+export ACP_AUTH_CONFIG='{"principals":[{"subject":"operator@example.test","token_sha256":"<sha-256-of-a-high-entropy-token>","permissions":["*"]}]}'
 export ACP_DATABASE_URL='postgresql+psycopg://user:password@host/database'
 make migrate
 make run
 ```
+
+Generate a fingerprint without placing the raw token in shell history:
+
+```bash
+python -c 'import getpass, hashlib; token = getpass.getpass("Bearer token: "); print(hashlib.sha256(token.encode()).hexdigest())'
+```
+
+`ACP_AUTH_CONFIG` stores token fingerprints, subjects, and permissions, never raw bearer
+tokens. Generate each token with at least 256 bits of entropy, retain the raw value in the
+calling system's secret manager, and send it only over TLS. Available permissions are
+`agents:read`, `agents:write`, `approvals:read`, `approvals:request`, `approvals:decide`, and
+`audit:read`; `*` is intended only for tightly controlled administrators. This static-token
+adapter is the bootstrap authentication mechanism. A future OIDC adapter can replace it
+without changing route authorization policy.
 
 ## Delivery policy
 
@@ -82,7 +101,9 @@ their audit events commit atomically; a database trigger rejects audit updates, 
 truncation. Readiness fails when the configured database is unavailable or not migrated.
 
 The in-memory adapter remains available for development and evaluation only. Authenticated
-actor identity, request idempotency, backup automation, and durable workflows remain planned.
+subjects and scoped permissions protect durable deployments, and actor-bearing writes reject
+identity mismatches. Request idempotency, OIDC, backup automation, and durable workflows remain
+planned.
 
 ## License
 

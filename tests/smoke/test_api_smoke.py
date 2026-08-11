@@ -1,9 +1,17 @@
+import secrets
 from collections.abc import AsyncIterator
 
 import httpx
 import pytest
 
 from agent_control_plane.api import create_app
+from agent_control_plane.auth import (
+    AuthenticationConfig,
+    Permission,
+    StaticBearerAuthenticator,
+    TokenPrincipalConfig,
+    hash_bearer_token,
+)
 from agent_control_plane.store import InMemoryControlPlaneStore
 
 
@@ -46,6 +54,89 @@ async def test_readiness_fails_when_the_store_is_unavailable() -> None:
     assert live_response.status_code == 200
     assert ready_response.status_code == 503
     assert ready_response.json()["detail"]["code"] == "store_unavailable"
+
+
+@pytest.mark.smoke
+@pytest.mark.anyio
+async def test_protected_api_enforces_credentials_permissions_and_actor_binding() -> None:
+    reader_token = secrets.token_urlsafe(32)
+    operator_token = secrets.token_urlsafe(32)
+    authenticator = StaticBearerAuthenticator(
+        AuthenticationConfig(
+            principals=(
+                TokenPrincipalConfig(
+                    subject="reader@example.test",
+                    token_sha256=hash_bearer_token(reader_token),
+                    permissions=frozenset({Permission.AGENTS_READ}),
+                ),
+                TokenPrincipalConfig(
+                    subject="operator@example.test",
+                    token_sha256=hash_bearer_token(operator_token),
+                    permissions=frozenset({Permission.ALL}),
+                ),
+            )
+        )
+    )
+    transport = httpx.ASGITransport(app=create_app(authenticator=authenticator))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as test_client:
+        assert (await test_client.get("/health/live")).status_code == 200
+
+        missing = await test_client.get("/v1/agents")
+        invalid = await test_client.get(
+            "/v1/agents",
+            headers={"Authorization": f"Bearer {secrets.token_urlsafe(32)}"},
+        )
+        wrong_scheme = await test_client.get(
+            "/v1/agents",
+            headers={"Authorization": "Basic ignored"},
+        )
+        assert missing.status_code == invalid.status_code == wrong_scheme.status_code == 401
+        assert missing.json() == invalid.json() == wrong_scheme.json()
+        for response in (missing, invalid, wrong_scheme):
+            assert response.headers["www-authenticate"] == "Bearer"
+
+        insufficient = await test_client.post(
+            "/v1/agents",
+            json=registration_payload(),
+            headers={"Authorization": f"Bearer {reader_token}"},
+        )
+        assert insufficient.status_code == 403
+        assert insufficient.json()["detail"]["code"] == "permission_denied"
+
+        mismatch_payload = registration_payload()
+        mismatch_payload["actor"] = "impersonated@example.test"
+        mismatch = await test_client.post(
+            "/v1/agents",
+            json=mismatch_payload,
+            headers={"Authorization": f"Bearer {operator_token}"},
+        )
+        assert mismatch.status_code == 403
+        assert mismatch.json()["detail"]["code"] == "actor_mismatch"
+
+        registered = await test_client.post(
+            "/v1/agents",
+            json=registration_payload(),
+            headers={"Authorization": f"Bearer {operator_token}"},
+        )
+        assert registered.status_code == 201
+
+        audit = await test_client.get(
+            "/v1/audit-events",
+            headers={"Authorization": f"Bearer {operator_token}"},
+        )
+        assert audit.json()["items"][0]["actor"] == "operator@example.test"
+
+
+@pytest.mark.smoke
+def test_every_versioned_operation_declares_bearer_authentication() -> None:
+    schema = create_app().openapi()
+
+    for path, operations in schema["paths"].items():
+        for operation in operations.values():
+            if path.startswith("/v1"):
+                assert {"HTTPBearer": []} in operation["security"]
+            else:
+                assert "security" not in operation
 
 
 @pytest.mark.smoke
