@@ -22,16 +22,21 @@ Control Plane API
     `- version promotion      (planned)
 ```
 
-The current code implements the API shell, the first versioned contract, and an in-memory
-governance loop. The storage protocol is owned by the control plane so PostgreSQL can replace
-the development adapter without leaking database types into the public API. PostgreSQL becomes
-the source of truth when persistence is introduced. Vector databases remain derived indexes,
-not authoritative stores.
+The current code implements the API shell, the first versioned contract, and a governance loop
+with in-memory and PostgreSQL adapters. The storage protocol is owned by the control plane, so
+database types do not leak into the public API. PostgreSQL is the durable source of truth;
+vector databases remain derived indexes, not authoritative stores.
 
 State changes use an expected revision to reject stale writers. Only active agents can request
 approval. Approval requests are single-decision records: an approved or rejected request cannot
-be overwritten. Audit events are append-only within the store and returned newest first.
-Authentication and durable audit retention are required before production use.
+be overwritten. State changes and their audit events share one database transaction. PostgreSQL
+row locks serialize competing status and decision operations, while conditional updates provide
+a second conflict check. A database trigger blocks audit mutation and removal. Events are
+returned newest first.
+
+Alembic owns schema versioning. Deployments run migrations as a separate step before the API;
+readiness stays unavailable when the schema is missing. Authentication, backup policy, and
+retention enforcement are required before production use.
 
 ## Adapter policy
 

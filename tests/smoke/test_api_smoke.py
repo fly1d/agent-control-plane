@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from agent_control_plane.api import create_app
+from agent_control_plane.store import InMemoryControlPlaneStore
 
 
 @pytest.fixture
@@ -28,6 +29,23 @@ async def test_service_is_live_and_ready(client: httpx.AsyncClient) -> None:
     assert live_response.json()["status"] == "ok"
     assert ready_response.status_code == 200
     assert ready_response.json()["status"] == "ok"
+
+
+@pytest.mark.smoke
+@pytest.mark.anyio
+async def test_readiness_fails_when_the_store_is_unavailable() -> None:
+    class UnavailableStore(InMemoryControlPlaneStore):
+        def is_ready(self) -> bool:
+            return False
+
+    transport = httpx.ASGITransport(app=create_app(UnavailableStore()))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as test_client:
+        live_response = await test_client.get("/health/live")
+        ready_response = await test_client.get("/health/ready")
+
+    assert live_response.status_code == 200
+    assert ready_response.status_code == 503
+    assert ready_response.json()["detail"]["code"] == "store_unavailable"
 
 
 @pytest.mark.smoke

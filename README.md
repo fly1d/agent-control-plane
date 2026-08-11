@@ -37,7 +37,8 @@ make check
 make run
 ```
 
-The API is then available at `http://127.0.0.1:8000`. Important endpoints:
+Without `ACP_DATABASE_URL`, the service uses its process-local in-memory adapter. The API is
+then available at `http://127.0.0.1:8000`. Important endpoints:
 
 - `GET /health/live`
 - `GET /health/ready`
@@ -48,10 +49,19 @@ The API is then available at `http://127.0.0.1:8000`. Important endpoints:
 - `GET /v1/audit-events`
 - `GET /docs`
 
-Container execution:
+Persistent local execution starts PostgreSQL, runs migrations, and then starts the API:
 
 ```bash
 docker compose up --build
+```
+
+For an externally managed PostgreSQL database, set a `postgresql+psycopg://` URL and migrate
+before starting the service:
+
+```bash
+export ACP_DATABASE_URL='postgresql+psycopg://user:password@host/database'
+make migrate
+make run
 ```
 
 ## Delivery policy
@@ -67,9 +77,12 @@ The first governance loop is available: register an agent, activate or pause it 
 revision checks, request and decide human approval, and inspect the resulting audit events.
 Public API compatibility starts with the `v1` schema.
 
-The bundled store is intentionally in-memory and intended for development and evaluation. Data
-does not survive a process restart and must not be treated as a production system of record.
-PostgreSQL persistence, authenticated actor identity, and durable workflows remain planned.
+PostgreSQL is available as the durable system of record. Agent changes, approval changes, and
+their audit events commit atomically; a database trigger rejects audit updates, deletion, and
+truncation. Readiness fails when the configured database is unavailable or not migrated.
+
+The in-memory adapter remains available for development and evaluation only. Authenticated
+actor identity, request idempotency, backup automation, and durable workflows remain planned.
 
 ## License
 

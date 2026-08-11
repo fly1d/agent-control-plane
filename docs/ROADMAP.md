@@ -14,12 +14,12 @@ Roadmap items advance only when tied to a validated user problem and an acceptan
 - Run replay and failure classification.
 - Tool-call schema validation and risk policy.
 - [x] In-memory human approval queue and append-only audit contract.
-- PostgreSQL-backed approval and immutable audit persistence.
+- [x] PostgreSQL-backed approval and immutable audit persistence.
 - Offline evaluation datasets and version promotion gates.
 
 ## Durable operations
 
-- PostgreSQL system of record.
+- [x] PostgreSQL system of record with reversible migrations.
 - Durable workflow adapter for cross-day tasks.
 - Idempotency, retry, compensation, and dead-letter handling.
 - Backup, restore, tenant isolation, and disaster exercises.

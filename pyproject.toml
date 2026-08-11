@@ -9,8 +9,11 @@ description = "A reliability and governance control plane for production AI agen
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "alembic>=1.16,<2",
   "fastapi>=0.116,<1",
+  "psycopg[binary]>=3.2,<4",
   "pydantic>=2.11,<3",
+  "sqlalchemy>=2.0,<3",
   "uvicorn[standard]>=0.35,<1",
 ]
 
@@ -34,6 +37,7 @@ packages = ["src/agent_control_plane"]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
 markers = [
+  "integration: tests that require external infrastructure",
   "smoke: fast end-to-end checks of the packaged service surface",
 ]
 

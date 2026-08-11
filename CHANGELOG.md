@@ -12,3 +12,5 @@ for public contracts once they are declared stable.
 - Risk-based review and delivery policy.
 - Agent registration and lifecycle status APIs with optimistic revision checks.
 - Human approval queue with single-decision enforcement and append-only audit events.
+- PostgreSQL system of record with transactional audit writes, Alembic migrations, readiness
+  checks, and database-level audit mutation protection.
