@@ -9,7 +9,7 @@ description = "A reliability and governance control plane for production AI agen
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-  "fastapi>=0.116,<1",
+  "fastapi>=0.141.1,<1",
   "pydantic>=2.11,<3",
   "uvicorn[standard]>=0.35,<1",
 ]
