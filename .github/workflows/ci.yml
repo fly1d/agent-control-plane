@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fast-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: python -m pip install -e '.[dev]'
+      - name: Lint
+        run: make lint
+      - name: Type check
+        run: make type
+      - name: Unit and contract tests
+        run: make test
+
+  container-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: .
+          load: true
+          push: false
+          tags: agent-control-plane:ci
+      - name: Smoke packaged service
+        run: |
+          docker run --detach --name agent-control-plane-ci --publish 8000:8000 agent-control-plane:ci
+          trap 'docker logs agent-control-plane-ci; docker rm --force agent-control-plane-ci' EXIT
+          python - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.request
+
+          for attempt in range(20):
+              try:
+                  with urllib.request.urlopen(
+                      "http://127.0.0.1:8000/health/ready", timeout=2
+                  ) as response:
+                      assert json.load(response)["status"] == "ok"
+                      break
+              except (AssertionError, OSError, urllib.error.URLError):
+                  if attempt == 19:
+                      raise
+                  time.sleep(0.5)
+
+          request = urllib.request.Request(
+              "http://127.0.0.1:8000/v1/agent-specs/validate",
+              data=json.dumps(
+                  {
+                      "agent_id": "ci-smoke-agent",
+                      "version": "1.0.0",
+                      "display_name": "CI Smoke Agent",
+                      "description": "Validates the packaged service contract.",
+                      "entrypoint": "https://agents.example.test/ci-smoke",
+                  }
+              ).encode(),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=2) as response:
+              assert json.load(response)["valid"] is True
+          PY
