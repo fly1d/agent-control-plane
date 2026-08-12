@@ -94,10 +94,22 @@ jobs:
           tags: agent-control-plane:ci
       - name: Smoke packaged service
         run: |
-          docker run --detach --name agent-control-plane-ci --publish 8000:8000 agent-control-plane:ci
+          if docker run --rm agent-control-plane:ci; then
+            echo "service started without explicit authentication or development mode"
+            exit 1
+          fi
+          ACP_SMOKE_ADMIN_TOKEN="$(openssl rand -hex 32)"
+          ACP_SMOKE_READER_TOKEN="$(openssl rand -hex 32)"
+          ACP_SMOKE_ADMIN_HASH="$(printf '%s' "$ACP_SMOKE_ADMIN_TOKEN" | sha256sum | cut -d ' ' -f1)"
+          ACP_SMOKE_READER_HASH="$(printf '%s' "$ACP_SMOKE_READER_TOKEN" | sha256sum | cut -d ' ' -f1)"
+          ACP_AUTH_CONFIG="$(printf '{"principals":[{"subject":"ci@example.test","token_sha256":"%s","permissions":["*"]},{"subject":"reader@example.test","token_sha256":"%s","permissions":["agents:read"]}]}' "$ACP_SMOKE_ADMIN_HASH" "$ACP_SMOKE_READER_HASH")"
+          export ACP_SMOKE_ADMIN_TOKEN ACP_SMOKE_READER_TOKEN
+          docker run --detach --name agent-control-plane-ci --publish 8000:8000 \
+            --env "ACP_AUTH_CONFIG=$ACP_AUTH_CONFIG" agent-control-plane:ci
           trap 'docker logs agent-control-plane-ci; docker rm --force agent-control-plane-ci' EXIT
           python - <<'PY'
           import json
+          import os
           import time
           import urllib.error
           import urllib.request
@@ -114,15 +126,28 @@ jobs:
                       raise
                   time.sleep(0.5)
 
-          def call(path, method="GET", payload=None):
+          admin_token = os.environ["ACP_SMOKE_ADMIN_TOKEN"]
+
+          def call(path, method="GET", payload=None, token=admin_token):
+              headers = {"Content-Type": "application/json"}
+              if token is not None:
+                  headers["Authorization"] = f"Bearer {token}"
               request = urllib.request.Request(
                   f"http://127.0.0.1:8000{path}",
                   data=None if payload is None else json.dumps(payload).encode(),
-                  headers={"Content-Type": "application/json"},
+                  headers=headers,
                   method=method,
               )
               with urllib.request.urlopen(request, timeout=2) as response:
                   return json.load(response)
+
+          def expect_http_error(status, path, method="GET", payload=None, token=admin_token):
+              try:
+                  call(path, method, payload, token)
+              except urllib.error.HTTPError as error:
+                  assert error.code == status
+                  return json.load(error)
+              raise AssertionError(f"expected HTTP {status}")
 
           specification = {
               "agent_id": "ci-smoke-agent",
@@ -131,11 +156,29 @@ jobs:
               "description": "Validates the packaged service contract.",
               "entrypoint": "https://agents.example.test/ci-smoke",
           }
+          assert expect_http_error(401, "/v1/agents", token=None)["detail"]["code"] == "authentication_failed"
+          assert expect_http_error(401, "/v1/agents", token="invalid")["detail"]["code"] == "authentication_failed"
+          reader_token = os.environ["ACP_SMOKE_READER_TOKEN"]
+          registration_payload = {"spec": specification, "actor": "ci@example.test"}
+          assert expect_http_error(
+              403,
+              "/v1/agents",
+              "POST",
+              registration_payload,
+              reader_token,
+          )["detail"]["code"] == "permission_denied"
+          mismatched_payload = {"spec": specification, "actor": "impersonated@example.test"}
+          assert expect_http_error(
+              403,
+              "/v1/agents",
+              "POST",
+              mismatched_payload,
+          )["detail"]["code"] == "actor_mismatch"
           assert call("/v1/agent-specs/validate", "POST", specification)["valid"] is True
           registered = call(
               "/v1/agents",
               "POST",
-              {"spec": specification, "actor": "ci@example.test"},
+              registration_payload,
           )
           assert registered["revision"] == 1
           activated = call(
@@ -157,7 +200,7 @@ jobs:
                   "agent_id": "ci-smoke-agent",
                   "action": "deployment.promote",
                   "risk": "high",
-                  "actor": "ci-smoke-agent",
+                  "actor": "ci@example.test",
                   "reason": "Exercise the packaged governance loop.",
               },
           )
@@ -166,7 +209,7 @@ jobs:
               "POST",
               {
                   "decision": "approve",
-                  "actor": "ci-reviewer@example.test",
+                  "actor": "ci@example.test",
                   "reason": "Container smoke evidence passed.",
               },
           )

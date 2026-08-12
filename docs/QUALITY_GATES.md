@@ -33,6 +33,10 @@ load, recovery, or security tests.
 Database changes additionally require upgrade, integration, downgrade, and re-upgrade evidence
 against the supported PostgreSQL version. Migration rehearsal uses disposable data only.
 
+Authentication changes additionally require packaged-service evidence for missing, invalid,
+under-scoped, mismatched-actor, and valid credentials. Authentication remains a high-risk
+change even when the public request schema is unchanged.
+
 ## Dependency maintenance
 
 Dependency pull requests must identify a compatibility, security, or reproducibility benefit.

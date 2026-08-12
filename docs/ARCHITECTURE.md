@@ -15,6 +15,7 @@ Existing Agent
     v
 Control Plane API
     |- AgentSpec validation
+    |- authenticated principals and scoped permissions
     |- agent lifecycle and optimistic revision checks
     |- human approval queue and append-only audit events
     |- trace and replay       (planned)
@@ -35,8 +36,15 @@ a second conflict check. A database trigger blocks audit mutation and removal. E
 returned newest first.
 
 Alembic owns schema versioning. Deployments run migrations as a separate step before the API;
-readiness stays unavailable when the schema is missing. Authentication, backup policy, and
-retention enforcement are required before production use.
+readiness stays unavailable when the schema is missing.
+
+Authentication is an owned adapter boundary. The initial adapter maps opaque bearer-token
+fingerprints to subjects and permissions. Protected writes bind the request actor to the
+authenticated subject before state reaches the store, so audit identity cannot be selected by
+an untrusted request body. Durable mode fails closed without authentication; the unauthenticated
+in-memory mode requires an explicit development switch. OIDC remains a future adapter rather
+than a route-level dependency. Backup policy and retention enforcement are still required
+before production use.
 
 ## Adapter policy
 
