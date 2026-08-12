@@ -12,7 +12,7 @@ lint:
 	python -m ruff check .
 
 type:
-	python -m mypy src
+	python -m mypy src examples
 
 unit:
 	python -m pytest tests/unit --cov=agent_control_plane --cov-report=term-missing
