@@ -86,5 +86,4 @@ actor identity, request idempotency, backup automation, and durable workflows re
 
 ## License
 
-No license has been selected yet. Publishing this repository does not by itself grant reuse
-rights. Choose an open-source or commercial license before making the GitHub repository public.
+Licensed under the [MIT License](LICENSE).
