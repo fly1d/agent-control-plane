@@ -7,6 +7,7 @@ for public contracts once they are declared stable.
 
 ### Added
 
+- MIT License for source and distribution metadata.
 - Initial FastAPI service with liveness, readiness, and `AgentSpec` validation.
 - Unit, smoke, lint, type, dependency audit, and container build automation.
 - Risk-based review and delivery policy.
