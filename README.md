@@ -77,6 +77,52 @@ make migrate
 make run
 ```
 
+## Python SDK
+
+The package includes a typed synchronous client for the complete current governance workflow:
+
+```python
+from agent_control_plane import ControlPlaneClient
+from agent_control_plane.models import (
+    AgentRegistrationRequest,
+    AgentRuntimeStatus,
+    AgentSpec,
+    AgentStatusUpdate,
+)
+
+with ControlPlaneClient(
+    "http://127.0.0.1:8000",
+    bearer_token="replace-with-a-secret-token",  # Omit unless the deployment requires it.
+) as control_plane:
+    registered = control_plane.register_agent(
+        AgentRegistrationRequest(
+            spec=AgentSpec(
+                agent_id="support-agent",
+                version="1.0.0",
+                display_name="Support Agent",
+                description="Handles support cases with governed actions.",
+                entrypoint="https://agents.example.test/support",
+            ),
+            actor="operator@example.test",
+        )
+    )
+    active = control_plane.update_agent_status(
+        registered.spec.agent_id,
+        AgentStatusUpdate(
+            status=AgentRuntimeStatus.ACTIVE,
+            expected_revision=registered.revision,
+            actor="operator@example.test",
+            reason="Readiness checks passed.",
+        ),
+    )
+```
+
+Methods return the same Pydantic models used by the versioned API contract. Structured API
+failures raise `ControlPlaneAPIError`; connection failures and invalid server responses use
+separate exception types. The client deliberately does not retry writes. Until server-side
+idempotency is available, inspect current state after an ambiguous timeout before deciding
+whether an operation is safe to send again.
+
 ## Delivery policy
 
 Every change merged to `main` goes through a pull request, review, and required fast checks.
@@ -94,8 +140,9 @@ PostgreSQL is available as the durable system of record. Agent changes, approval
 their audit events commit atomically; a database trigger rejects audit updates, deletion, and
 truncation. Readiness fails when the configured database is unavailable or not migrated.
 
-The in-memory adapter remains available for development and evaluation only. Authenticated
-actor identity, request idempotency, backup automation, and durable workflows remain planned.
+The in-memory adapter remains available for development and evaluation only. A typed Python SDK
+is available for integration. Authenticated actor identity, request idempotency, backup
+automation, and durable workflows remain planned.
 
 ## License
 
