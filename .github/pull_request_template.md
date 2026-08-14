@@ -15,6 +15,15 @@ Describe the user-visible or operational outcome.
 - Failure mode:
 - Rollback plan:
 
+## Review decision
+
+- Mode: team / solo-maintainer
+- Independent reviewer(s), if required:
+- Final material push (medium-risk solo mode): not applicable / YYYY-MM-DD HH:MM UTC
+- Earliest merge (medium-risk solo mode): not applicable / YYYY-MM-DD HH:MM UTC
+- High-risk production status: not applicable / approved / experimental and prohibited
+- Owner decision (solo mode): hold / merge
+
 ## Release notes
 
 State `none` or provide a concise changelog entry.
