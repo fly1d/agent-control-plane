@@ -15,3 +15,4 @@ for public contracts once they are declared stable.
 - Human approval queue with single-decision enforcement and append-only audit events.
 - PostgreSQL system of record with transactional audit writes, Alembic migrations, readiness
   checks, and database-level audit mutation protection.
+- Reproducible governed-refund demo, paid-pilot boundary, and customer-discovery criteria.

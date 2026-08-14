@@ -25,6 +25,19 @@ Not in the initial scope:
 - a replacement for Temporal, Mem0, LangSmith, or DSPy;
 - Kubernetes before workload and isolation requirements justify it.
 
+## First validation scenario
+
+The initial commercial hypothesis is governed refund approval for an existing customer-support
+agent. The repository includes a reproducible end-to-end demo, a bounded paid-pilot offer, and a
+customer-discovery guide:
+
+- [`examples/refund_approval.py`](examples/refund_approval.py)
+- [`docs/PAID_PILOT.md`](docs/PAID_PILOT.md)
+- [`docs/CUSTOMER_DISCOVERY.md`](docs/CUSTOMER_DISCOVERY.md)
+
+These are validation materials, not a production-readiness claim. Major provider integrations
+remain deferred until customer evidence identifies a concrete blocker.
+
 ## Quick start
 
 Requirements: Python 3.11 or newer.
