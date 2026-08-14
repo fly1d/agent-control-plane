@@ -27,6 +27,10 @@ with in-memory and PostgreSQL adapters. The storage protocol is owned by the con
 database types do not leak into the public API. PostgreSQL is the durable source of truth;
 vector databases remain derived indexes, not authoritative stores.
 
+The Python SDK is a typed HTTP adapter over the same public contracts. It owns no governance
+state and does not bypass API policy. It classifies API, transport, and invalid-response errors
+without automatically retrying writes; retry safety remains a server-side idempotency concern.
+
 State changes use an expected revision to reject stale writers. Only active agents can request
 approval. Approval requests are single-decision records: an approved or rejected request cannot
 be overwritten. State changes and their audit events share one database transaction. PostgreSQL
