@@ -8,6 +8,7 @@ Roadmap items advance only when tied to a validated user problem and an acceptan
 - [x] API health, readiness, and failure conventions.
 - [x] Pull request governance and automated quality gates.
 - [x] Authenticated principals, scoped permissions, and audit actor binding.
+- [x] Typed Python SDK for the current governance workflow.
 
 ## Reliability gateway
 
