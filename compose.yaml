@@ -27,6 +27,8 @@ services:
   control-plane:
     build: .
     environment:
+      ACP_AUTH_CONFIG: >-
+        {"principals":[{"subject":"local-admin","token_sha256":"8fa4550a0cd4c25171ff8010ccd3fa30dd9430e9df0d8b1314b20dfdd4ca729d","permissions":["*"]}]}
       ACP_DATABASE_URL: postgresql+psycopg://control_plane:control_plane@postgres:5432/control_plane
     ports:
       - "${ACP_HTTP_PORT:-8000}:8000"

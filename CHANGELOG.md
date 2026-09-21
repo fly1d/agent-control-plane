@@ -15,6 +15,8 @@ for public contracts once they are declared stable.
 - Human approval queue with single-decision enforcement and append-only audit events.
 - PostgreSQL system of record with transactional audit writes, Alembic migrations, readiness
   checks, and database-level audit mutation protection.
+- Bearer-token authentication adapter with scoped permissions, fail-closed durable startup, and
+  authenticated actor binding for audit-producing writes.
 - Reproducible governed-refund demo, paid-pilot boundary, and customer-discovery criteria.
 - Typed Python SDK with bearer authentication support and structured API, transport, and
   response-contract errors.

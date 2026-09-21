@@ -35,4 +35,4 @@ migrate:
 	python -m alembic upgrade head
 
 run:
-	python -m agent_control_plane
+	ACP_ALLOW_INSECURE_DEV=true python -m agent_control_plane

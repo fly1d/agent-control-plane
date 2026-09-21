@@ -60,15 +60,16 @@ def test_agent_spec_rejects_empty_capabilities() -> None:
 def test_command_entrypoint_runs_the_api(monkeypatch: pytest.MonkeyPatch) -> None:
     invocation: dict[str, object] = {}
 
-    def fake_run(app: str, *, host: str, port: int) -> None:
-        invocation.update(app=app, host=host, port=port)
+    def fake_run(app: str, *, host: str, port: int, factory: bool) -> None:
+        invocation.update(app=app, host=host, port=port, factory=factory)
 
     monkeypatch.setattr(entrypoint.uvicorn, "run", fake_run)
 
     entrypoint.main()
 
     assert invocation == {
-        "app": "agent_control_plane.api:app",
+        "app": "agent_control_plane.api:create_app_from_environment",
         "host": "0.0.0.0",
         "port": 8000,
+        "factory": True,
     }
