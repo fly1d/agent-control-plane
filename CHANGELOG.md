@@ -5,6 +5,11 @@ for public contracts once they are declared stable.
 
 ## [Unreleased]
 
+### Fixed
+
+- Upgrade CI build tooling before dependency installation to avoid auditing vulnerable runner
+  pip and setuptools, and run the full dependency audit on pull requests and weekly assurance.
+
 ### Added
 
 - MIT License for source and distribution metadata.
